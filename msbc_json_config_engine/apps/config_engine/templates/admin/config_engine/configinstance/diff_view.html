@@ -1,0 +1,287 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Config Engine | Diff — {{ obj.config_key }}{% endblock %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+    /* ── Design System Tokens ── */
+    :root {
+        --bg-main:      hsl(240, 21%, 11%);
+        --bg-surface:   hsl(240, 21%, 15%);
+        --bg-panel:     rgba(30, 30, 46, 0.7);
+        --border-color: rgba(69, 71, 90, 0.4);
+        --text-primary: hsl(240, 20%, 97%);
+        --text-muted:   hsl(240, 10%, 70%);
+        --brand:        hsl(199, 89%, 48%);
+        --brand-glow:   rgba(33, 150, 243, 0.15);
+        --green:        #a6e3a1;
+        --yellow:       #f9e2af;
+        --red:          #f38ba8;
+        --mono:         'JetBrains Mono', 'Fira Mono', monospace;
+    }
+
+    body {
+        background-color: var(--bg-main) !important;
+        color: var(--text-primary) !important;
+        font-family: 'Inter', sans-serif !important;
+    }
+
+    h1, h2, h3 { color: var(--text-primary) !important; font-weight: 700 !important; }
+
+    /* ── Content container ── */
+    #content { background: transparent !important; padding: 24px 40px !important; }
+
+    /* ── Breadcrumbs override ── */
+    .breadcrumbs { background: var(--bg-surface) !important; border-bottom: 1px solid var(--border-color) !important; padding: 10px 40px !important; color: var(--text-muted) !important; }
+    .breadcrumbs a { color: var(--brand) !important; }
+
+    /* ── Metadata Grid ── */
+    .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    .meta-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 16px 20px;
+        backdrop-filter: blur(8px);
+        transition: transform 0.2s, border-color 0.2s;
+    }
+    .meta-card:hover { border-color: var(--brand); transform: translateY(-2px); }
+    .meta-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 4px; }
+    .meta-card .value { font-size: 14px; font-weight: 600; word-break: break-all; }
+    .meta-card .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; background: rgba(255,255,255,0.1); }
+
+    /* ── Status Banners ── */
+    .status-banner {
+        padding: 16px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        margin-bottom: 32px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border: 1px solid transparent;
+        animation: fadeIn 0.4s ease-out;
+    }
+    .status-banner.in-sync { background: rgba(166, 227, 161, 0.1); color: var(--green); border-color: rgba(166, 227, 161, 0.2); }
+    .status-banner.drifted { background: rgba(243, 139, 168, 0.1); color: var(--red); border-color: rgba(243, 139, 168, 0.2); }
+    .status-banner.outdated { background: rgba(249, 226, 175, 0.1); color: var(--yellow); border-color: rgba(249, 226, 175, 0.2); }
+
+    /* ── Triple Column Diff ── */
+    .diff-container {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        height: calc(100vh - 450px);
+        min-height: 500px;
+    }
+    .diff-column {
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        overflow: hidden;
+        position: relative;
+    }
+    .diff-column.current { 
+        border-color: var(--brand); 
+        box-shadow: 0 0 20px var(--brand-glow);
+        z-index: 2;
+    }
+    .column-header {
+        padding: 14px 20px;
+        background: rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .column-header h3 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+    .column-header .v-badge { background: var(--brand); color: white; padding: 2px 8px; border-radius: 60px; font-size: 10px; font-weight: 700; }
+
+    .json-canvas {
+        flex: 1;
+        overflow: auto;
+        padding: 20px;
+        font-family: var(--mono);
+        color: #cdd6f4;
+        font-size: 13px;
+        line-height: 1.6;
+        scrollbar-width: thin;
+        scrollbar-color: var(--brand) transparent;
+    }
+    .json-canvas pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; }
+    .json-canvas::-webkit-scrollbar { width: 6px; }
+    .json-canvas::-webkit-scrollbar-thumb { background: var(--brand); border-radius: 10px; }
+
+    /* ── Buttons ── */
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 32px;
+        padding: 10px 20px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    .back-btn:hover { background: var(--brand); border-color: var(--brand); color: white; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+<div id="diff-root">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 32px; margin-bottom: 4px;">{{ obj.config_key }}</h1>
+            <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Configuration Lineage & System Drift Analysis</p>
+        </div>
+        <div style="text-align: right;">
+            <div class="meta-card" style="padding: 10px 20px;">
+                <div class="label">Primary Context</div>
+                <div class="value">{{ obj.scope_type|upper }}{% if obj.scope_id %} : {{ obj.scope_id }}{% endif %}</div>
+            </div>
+        </div>
+    </div>
+
+    {# ── Status Banner ── #}
+    {% if is_drifted %}
+        <div class="status-banner drifted">
+            <span style="font-size: 24px;">⚠</span>
+            <div>
+                CONTENT DRIFT DETECTED — Current payload is significantly altered from the historical OOB base.
+                <div style="font-weight: 400; font-size: 13px; opacity: 0.8;">The source content for this override has been modified at its baseline.</div>
+            </div>
+        </div>
+    {% elif is_outdated %}
+        <div class="status-banner outdated">
+            <span style="font-size: 24px;">⚡</span>
+            <div>
+                VERSION OUTDATED — A newer OOB release (v{{ latest_oob.release_version }}) is available.
+                <div style="font-weight: 400; font-size: 13px; opacity: 0.8;">This {{ obj.scope_type }} configuration is branching from an older system state.</div>
+            </div>
+        </div>
+    {% else %}
+        <div class="status-banner in-sync">
+            <span style="font-size: 24px;">✅</span>
+            <div>
+                SYSTEM IN SYNC — This configuration is derived from the latest active OOB release.
+                <div style="font-weight: 400; font-size: 13px; opacity: 0.8;">No drift or version discrepancies detected between override and system baseline.</div>
+            </div>
+        </div>
+    {% endif %}
+
+    {# ── Metadata Grid ── #}
+    <div class="meta-grid">
+        <div class="meta-card">
+            <div class="label">Instance ID</div>
+            <div class="value" style="font-family: var(--mono); font-size:12px;">{{ obj.id }}</div>
+        </div>
+        <div class="meta-card">
+            <div class="label">Active Status</div>
+            <div class="value">
+                {% if obj.is_active %}<span style="color:var(--green)">● ACTIVE</span>{% else %}<span style="color:var(--red)">● INACTIVE</span>{% endif %}
+            </div>
+        </div>
+        <div class="meta-card">
+            <div class="label">Base Config ID</div>
+            <div class="value" style="font-family: var(--mono); font-size:12px;">{{ obj.base_config_id|default:"NULL (Root)" }}</div>
+        </div>
+        <div class="meta-card">
+            <div class="label">Parent Link</div>
+            <div class="value">{{ obj.parent_config_instance_id|default:"DIRECT" }}</div>
+        </div>
+    </div>
+
+    {# ── Triple Column Diff ── #}
+    <div class="diff-container" id="sync-container">
+        {# ── Column 1: Historical Base ── #}
+        <div class="diff-column">
+            <div class="column-header">
+                <h3>1. Historical Base</h3>
+                {% if base_obj %}<span class="v-badge">{{ base_obj.release_version }}</span>{% endif %}
+            </div>
+            <div class="json-canvas" id="canvas-base">
+                {% if base_obj %}<pre>{{ base_json }}</pre>{% else %}
+                <div style="height:100%; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-style:italic; text-align:center;">
+                    No historical base found.<br>This record is the root of its lineage.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {# ── Column 2: This Config ── #}
+        <div class="diff-column current">
+            <div class="column-header" style="background: rgba(33, 150, 243, 0.1);">
+                <h3>2. Current {{ obj.scope_type|capfirst }} Config</h3>
+                <span class="v-badge">{{ obj.release_version }}</span>
+            </div>
+            <div class="json-canvas" id="canvas-this">
+                <pre>{{ this_json }}</pre>
+            </div>
+        </div>
+
+        {# ── Column 3: Latest OOB ── #}
+        <div class="diff-column">
+            <div class="column-header">
+                <h3>3. Latest System OOB</h3>
+                {% if latest_oob %}<span class="v-badge">{{ latest_oob.release_version }}</span>{% endif %}
+            </div>
+            <div class="json-canvas" id="canvas-latest">
+                {% if latest_oob %}<pre>{{ latest_oob_json }}</pre>{% else %}
+                <div style="height:100%; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-style:italic;">
+                    No active OOB config found.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <a href="../../" class="back-btn">
+        <svg fill="currentColor" width="16" height="16" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        Return to Registry
+    </a>
+</div>
+
+<script>
+    (function() {
+        const base = document.getElementById('canvas-base');
+        const middle = document.getElementById('canvas-this');
+        const latest = document.getElementById('canvas-latest');
+        const panels = [base, middle, latest].filter(p => p !== null);
+
+        let isScrolling = false;
+
+        const syncScroll = (e) => {
+            if (isScrolling) return;
+            isScrolling = true;
+            const target = e.target;
+            panels.forEach(p => {
+                if (p !== target) {
+                    p.scrollTop = target.scrollTop;
+                    p.scrollLeft = target.scrollLeft;
+                }
+            });
+            setTimeout(() => isScrolling = false, 50);
+        };
+
+        panels.forEach(p => {
+            p.addEventListener('scroll', syncScroll);
+        });
+    })();
+</script>
+{% endblock %}

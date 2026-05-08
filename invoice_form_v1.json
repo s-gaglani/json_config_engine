@@ -1,0 +1,8 @@
+﻿{
+  "fields": {
+    "name":    { "visible": true,  "required": true  },
+    "email":   { "visible": true,  "required": true  },
+    "phone":   { "visible": false, "required": false },
+    "address": { "visible": true,  "required": false }
+  }
+}

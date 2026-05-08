@@ -1,0 +1,5 @@
+exclude msbc_json_config_engine/apps/config_engine/migrations/*
+exclude msbc_json_config_engine/scripts/*
+exclude msbc_json_config_engine/tests/*
+exclude msbc_json_config_engine/apps/config_engine/urls.py
+exclude msbc_json_config_engine/config/urls.py

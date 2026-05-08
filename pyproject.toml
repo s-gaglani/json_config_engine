@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=45","wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "msbc_json_config_engine"
+version = "1.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "Django>=5.0.6",
+    "djangorestframework==3.15.2",
+    "drf-spectacular==0.27.2",
+    "psycopg[binary]>=3.2.10",
+    "python-decouple==3.8",
+    "python-dotenv==1.0.1",
+    "structlog==24.2.0",
+    "gunicorn==22.0.0",
+]
+readme = "README.md"
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.2.2",
+    "pytest-django==4.8.0",
+    "pytest-cov==5.0.0",
+    "factory-boy==3.3.0",
+]
+
+[tool.pytest.ini_options]  # taken from the pytest.ini
+DJANGO_SETTINGS_MODULE = "msbc_json_config_engine.config.settings.development"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --cov=msbc_json_config_engine/apps --cov-report=term-missing"
+testpaths = ["msbc_json_config_engine/apps", "msbc_json_config_engine/tests"]
+
+[tool.setuptools.packages.find]
+include = ["msbc_json_config_engine*"]
+
+

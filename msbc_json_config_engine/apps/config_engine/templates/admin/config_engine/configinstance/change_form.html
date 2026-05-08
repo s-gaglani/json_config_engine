@@ -1,0 +1,239 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+    /* ── Design System Tokens ── */
+    :root {
+        --bg-main:      hsl(240, 21%, 11%);
+        --bg-surface:   hsl(240, 21%, 15%);
+        --bg-panel:     rgba(30, 30, 46, 0.7);
+        --border-color: rgba(69, 71, 90, 0.4);
+        --text-primary: hsl(240, 20%, 97%);
+        --text-muted:   hsl(240, 10%, 70%);
+        --brand:        hsl(199, 89%, 48%);
+        --brand-glow:   rgba(33, 150, 243, 0.15);
+        --green:        #a6e3a1;
+        --yellow:       #f9e2af;
+        --red:          #f38ba8;
+        --mono:         'JetBrains Mono', 'Fira Mono', monospace;
+    }
+
+    /* ── Global Admin Overhaul ── */
+    body, #container, #content, .module {
+        background-color: var(--bg-main) !important;
+        color: var(--text-primary) !important;
+        font-family: 'Inter', sans-serif !important;
+    }
+
+    h1, h2, h3, .module h2 { color: var(--text-primary) !important; background: transparent !important; border: none !important; font-weight: 700 !important; }
+
+    /* ── Breadcrumbs ── */
+    .breadcrumbs { 
+        background: var(--bg-surface) !important; 
+        border-bottom: 1px solid var(--border-color) !important; 
+        color: var(--text-muted) !important; 
+        padding: 12px 40px !important;
+        font-size: 13px !important;
+    }
+    .breadcrumbs a { color: var(--brand) !important; font-weight: 600 !important; }
+
+    /* ── Fieldsets & Rows ── */
+    .module { 
+        border: 1px solid var(--border-color) !important; 
+        border-radius: 16px !important; 
+        margin-bottom: 32px !important; 
+        background: var(--bg-panel) !important; 
+        backdrop-filter: blur(12px);
+        overflow: hidden;
+    }
+    .module h2 {
+        padding: 16px 24px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        font-size: 14px !important;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-muted) !important;
+    }
+    .form-row { 
+        border-bottom: 1px solid var(--border-color) !important; 
+        padding: 24px !important;
+        background: transparent !important;
+    }
+    .form-row:last-child { border-bottom: none !important; }
+    
+    label { 
+        color: var(--text-muted) !important; 
+        font-weight: 600 !important; 
+        font-size: 12px !important; 
+        text-transform: uppercase; 
+        letter-spacing: 0.05em; 
+        width: 180px !important;
+    }
+    .readonly { 
+        color: var(--text-primary) !important; 
+        font-family: var(--mono); 
+        font-size: 13px !important;
+        background: rgba(255,255,255,0.03);
+        padding: 4px 10px;
+        border-radius: 6px;
+    }
+
+    /* ── Data Inputs ── */
+    input[type="text"], input[type="number"], select {
+        background: var(--bg-surface) !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-primary) !important;
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
+        outline: none !important;
+    }
+    input[type="text"]:focus { border-color: var(--brand) !important; box-shadow: 0 0 0 2px var(--brand-glow) !important; }
+
+    /* ── Submit Row ── */
+    .submit-row { 
+        background: var(--bg-surface) !important; 
+        border: 1px solid var(--border-color) !important; 
+        border-radius: 16px !important;
+        padding: 24px !important;
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+    .submit-row input, .submit-row button {
+        background: var(--bg-main) !important;
+        border: 1px solid var(--border-color) !important;
+        color: var(--text-primary) !important;
+        border-radius: 10px !important;
+        padding: 12px 24px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.08em !important;
+        font-size: 12px !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        cursor: pointer;
+    }
+    .submit-row input[name="_save"] {
+        background: var(--brand) !important;
+        border-color: var(--brand) !important;
+        color: white !important;
+    }
+    .submit-row input:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+
+    /* ── Tool buttons ── */
+    .object-tools { margin-top: 0 !important; }
+    .object-tools a {
+        background: var(--bg-surface) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        color: var(--text-primary) !important;
+        font-weight: 600 !important;
+        padding: 8px 16px !important;
+        transition: all 0.2s !important;
+    }
+    .object-tools a:hover { background: var(--brand) !important; color: white !important; border-color: var(--brand) !important; transform: translateY(-2px); }
+
+</style>
+{% endblock %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    {% if original %}
+        <li>
+            <a href="{% url 'admin:config_engine_configinstance_diff' original.pk %}" class="viewsitelink">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:8px; vertical-align:middle;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                {% trans "View Diff" %}
+            </a>
+        </li>
+    {% endif %}
+{% endblock %}
+
+{% block admin_change_form_document_ready %}
+{{ block.super }}
+<script>
+(function () {
+    "use strict";
+
+    /* ── IDE-Style JSON Editor Overhaul ── */
+    const textarea = document.getElementById("id_config_json");
+    if (!textarea) return;
+
+    Object.assign(textarea.style, {
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: "14px",
+        lineHeight: "1.6",
+        minHeight: "450px",
+        width: "100%",
+        backgroundColor: "rgba(30, 30, 46, 0.4)",
+        color: "#cdd6f4",
+        border: "1px solid rgba(69, 71, 90, 0.5)",
+        borderRadius: "12px",
+        padding: "20px",
+        resize: "vertical",
+        boxSizing: "border-box",
+        outline: "none",
+        transition: "border-color 0.2s, box-shadow 0.2s"
+    });
+
+    textarea.addEventListener("focus", () => {
+        textarea.style.borderColor = "var(--brand)";
+        textarea.style.boxShadow = "0 0 0 3px var(--brand-glow)";
+    });
+    textarea.addEventListener("blur", () => {
+        textarea.style.borderColor = "rgba(69, 71, 90, 0.5)";
+        textarea.style.boxShadow = "none";
+    });
+
+    /* Pretty-print initial value */
+    try {
+        const parsed = JSON.parse(textarea.value);
+        textarea.value = JSON.stringify(parsed, null, 2);
+    } catch (_) { }
+
+    /* Custom Alert System */
+    const errorDiv = document.createElement("div");
+    errorDiv.id = "json-validation-error";
+    Object.assign(errorDiv.style, {
+        display: "none",
+        marginTop: "12px",
+        padding: "12px 18px",
+        background: "rgba(243, 139, 168, 0.15)",
+        color: "#f38ba8",
+        border: "1px solid rgba(243, 139, 168, 0.3)",
+        borderRadius: "8px",
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: "13px",
+        fontWeight: "600",
+        animation: "fadeIn 0.3s ease-out"
+    });
+    textarea.insertAdjacentElement("afterend", errorDiv);
+
+    const form = textarea.closest("form");
+    if (!form) return;
+
+    form.addEventListener("submit", function (e) {
+        errorDiv.style.display = "none";
+        try {
+            JSON.parse(textarea.value);
+        } catch (err) {
+            e.preventDefault();
+            errorDiv.innerHTML = "<strong>VALIDATION ERROR:</strong><br>" + err.message;
+            errorDiv.style.display = "block";
+            textarea.style.borderColor = "#f38ba8";
+            textarea.focus();
+            textarea.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+    });
+
+    /* Global Animations CSS */
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = `@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }`;
+    document.head.appendChild(styleSheet);
+
+})();
+</script>
+{% endblock %}
